@@ -11,8 +11,10 @@ with tempfile.TemporaryDirectory() as tmp:
    errors=[]
    page.on('pageerror',lambda e:errors.append(str(e)))
    page.goto('http://127.0.0.1:8765')
+   assert page.get_by_text('반가워요, 타자 친구!').count()==0
+   assert page.locator('select[name=class_name] option:not([disabled])').all_text_contents()==['1반','2반','3반','4반','5반','6반']
    page.get_by_role('button',name='처음 왔어요').click()
-   page.locator('[name=class_name]').fill('1학년 3반')
+   page.locator('[name=class_name]').select_option('3반')
    page.locator('[name=name]').fill('김하늘')
    page.locator('[name=pin]').fill('1234')
    page.get_by_role('button',name='내 계정 만들기').click()
@@ -31,7 +33,7 @@ with tempfile.TemporaryDirectory() as tmp:
    page.locator('[data-page=rankings]').click()
    page.get_by_role('cell',name='김하늘',exact=True).wait_for()
    page.locator('[data-rank=classes]').click()
-   page.get_by_role('cell',name='1학년 3반',exact=True).wait_for()
+   page.get_by_role('cell',name='3반',exact=True).wait_for()
    page.locator('#logout').click()
    page.get_by_role('button',name='로그인',exact=True).wait_for()
    page.locator('[name=pin]').fill('1234')
