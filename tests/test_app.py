@@ -87,6 +87,22 @@ class AppTest(unittest.TestCase):
         self.assertEqual(ranks['students'][0]['speed'],result['speed'])
         self.assertEqual(ranks['classes'][0]['count'],1)
         self.assertEqual(ranks['classes'][0]['speed'],result['speed'])
+        for kind in ('keys', 'words'):
+            prompt = self.request(student,'start',{'mode':'practice','practice_type':kind})
+            if kind == 'keys':
+                self.assertEqual(prompt['text'], 'ㅁ ㄴ ㅇ ㄹ')
+            else:
+                self.assertEqual(prompt['text'], '나무')
+            wrong = self.request(student,'submit',{'text':'오답'})
+            self.assertFalse(wrong['eligible'])
+            retry = self.request(student,'start',{'mode':'practice','practice_type':kind,'retry':True})
+            self.assertEqual(retry['text'], prompt['text'])
+            self.assertTrue(self.request(student,'submit',{'text':retry['text']})['eligible'])
+            record = self.request(student,'records')[0]
+            self.assertEqual(record['mode'], kind)
+            following = self.request(student,'start',{'mode':'practice','practice_type':kind})
+            self.assertNotEqual(following['text'], prompt['text'])
+        self.request(student,'start',{'practice_type':'unknown'},400)
         for index in range(5):
             prompt = self.request(student,'start',{'mode':'competition','new':index==0})
             self.assertEqual(prompt['number'],index+1)

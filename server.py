@@ -36,6 +36,31 @@ TEXTS = [
 ]
 
 
+PRACTICE_SETS = {
+    'short': TEXTS,
+    'keys': [
+        ('기본 자리 · 왼손', 'ㅁ ㄴ ㅇ ㄹ'),
+        ('기본 자리 · 오른손', 'ㅎ ㅗ ㅓ ㅏ ㅣ'),
+        ('윗자리 · 자음', 'ㅂ ㅈ ㄷ ㄱ ㅅ'),
+        ('윗자리 · 모음', 'ㅛ ㅕ ㅑ ㅐ ㅔ'),
+        ('아랫자리', 'ㅋ ㅌ ㅊ ㅍ ㅠ ㅜ ㅡ'),
+        ('기본 자리 반복', 'ㅁ ㅏ ㄴ ㅓ ㅇ ㅗ ㄹ ㅣ'),
+        ('자음 익히기', 'ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ'),
+        ('모음 익히기', 'ㅏ ㅑ ㅓ ㅕ ㅗ ㅛ ㅜ ㅠ ㅡ ㅣ'),
+    ],
+    'words': [
+        ('쉬운 단어', '나무'), ('쉬운 단어', '하늘'),
+        ('쉬운 단어', '바다'), ('쉬운 단어', '마음'),
+        ('받침 있는 단어', '학교'), ('받침 있는 단어', '친구'),
+        ('받침 있는 단어', '연필'), ('받침 있는 단어', '도전'),
+        ('긴 단어', '도서관'), ('긴 단어', '무지개'),
+        ('긴 단어', '자신감'), ('긴 단어', '배려심'),
+        ('복합 모음', '괜찮아'), ('복합 모음', '계획'),
+        ('겹받침', '맑음'), ('겹받침', '읽기'),
+    ],
+}
+
+
 def connect():
     db = sqlite3.connect(DB, timeout=15)
     db.row_factory = sqlite3.Row
@@ -229,7 +254,12 @@ class Handler(BaseHTTPRequestHandler):
             mode = d.get('mode','practice')
             if mode not in ('practice','competition'):
                 raise ValueError('연습 종류를 확인해 주세요.')
-            if d.get('retry') and s.get('attempt'):
+            practice_type = d.get('practice_type', 'short') if mode == 'practice' else 'short'
+            if practice_type not in PRACTICE_SETS:
+                raise ValueError('연습 단계를 확인해 주세요.')
+            if (d.get('retry') and s.get('attempt')
+                    and s['attempt']['mode'] == mode
+                    and s['attempt'].get('practice_type', 'short') == practice_type):
                 attempt = s['attempt']
                 attempt['started'] = time.monotonic()
             else:
@@ -238,17 +268,19 @@ class Handler(BaseHTTPRequestHandler):
                         s['competition'] = {'index':0,'speeds':[]}
                     index = s['competition']['index']
                 else:
-                    index = s.get('practice_index', secrets.randbelow(len(TEXTS)))
-                attempt = {'index': index % len(TEXTS),'mode':mode,'started':time.monotonic()}
+                    index = s.get('practice_indexes', {}).get(practice_type, secrets.randbelow(len(TEXTS)) if practice_type == 'short' else 0)
+                attempt = {'index': index % len(PRACTICE_SETS[practice_type]), 'mode':mode,
+                           'practice_type':practice_type, 'started':time.monotonic()}
                 s['attempt'] = attempt
-            category,text = TEXTS[attempt['index']]
+            category,text = PRACTICE_SETS[attempt['practice_type']][attempt['index']]
             self.send_json({'category':category,'text':text,'number': s.get('competition',{}).get('index',0)+1})
         elif self.path == '/api/submit':
             a = s.pop('attempt',None)
             if not a:
                 raise ValueError('문장을 먼저 시작해 주세요.')
             text = str(d.get('text',''))
-            target = TEXTS[a['index']][1]
+            practice_type = a.get('practice_type', 'short')
+            target = PRACTICE_SETS[practice_type][a['index']][1]
             elapsed = max(time.monotonic()-a['started'],1)
             correct = sum(x==y for x,y in zip(text,target))
             accuracy = round(correct/max(len(text),len(target))*100,2)
@@ -256,11 +288,11 @@ class Handler(BaseHTTPRequestHandler):
             speed = round(strokes(text)*60/elapsed,1)
             with connect() as db:
                 db.execute('INSERT INTO records(student_id,sentence,speed,accuracy,eligible,mode) VALUES(?,?,?,?,?,?)',
-                           (s['id'],target,speed,accuracy,int(eligible),a['mode']))
+                           (s['id'],target,speed,accuracy,int(eligible),practice_type if a['mode']=='practice' and practice_type!='short' else a['mode']))
                 finished = False
                 if eligible:
                     if a['mode']=='practice':
-                        s['practice_index'] = (a['index']+1)%len(TEXTS)
+                        s.setdefault('practice_indexes', {})[practice_type] = (a['index']+1)%len(PRACTICE_SETS[practice_type])
                     else:
                         c = s['competition']
                         c['index'] += 1

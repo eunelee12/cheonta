@@ -28,6 +28,17 @@ with tempfile.TemporaryDirectory() as tmp:
    page.locator('#typing').fill(text)
    page.locator('#submit').click()
    page.wait_for_function("document.querySelector('#completed').textContent.includes('1')")
+   assert page.locator('[data-practice]').all_text_contents()==['자리연습','단어연습','짧은 글 연습']
+   for kind, expected in [('keys','ㅁ ㄴ ㅇ ㄹ'),('words','나무')]:
+    page.locator(f'[data-practice={kind}]').click()
+    page.wait_for_function('(expected)=>document.querySelector("#sentence").textContent===expected',arg=expected)
+    assert page.locator(f'[data-practice={kind}]').get_attribute('aria-selected')=='true'
+    page.locator('#typing').fill(expected)
+    page.locator('#submit').click()
+    page.wait_for_function("document.querySelector('#completed').textContent.includes('1')")
+    assert page.locator('#sentence').inner_text()!=expected
+   page.locator('[data-practice=short]').click()
+   page.locator('#typing').wait_for()
    page.locator('[data-page=records]').click()
    page.get_by_role('cell',name='미반영',exact=True).wait_for()
    page.locator('[data-page=rankings]').click()
