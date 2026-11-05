@@ -144,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError as e:
                 self.send_json({'error': str(e)}, 401)
             return
-        paths = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/logo.png': 'logo.png'}
+        paths = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css', '/logo.png': 'logo.png', '/logo-small.png': 'logo-small.png'}
         name = paths.get(self.path.split('?')[0])
         if not name:
             self.send_error(404)

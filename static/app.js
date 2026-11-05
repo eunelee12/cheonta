@@ -41,7 +41,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseActivi
 window.addEventListener('pagehide',()=>{const t=activityTracker;if(t&&Math.floor(t.total)>t.saved)navigator.sendBeacon('/api/activity',new Blob([JSON.stringify({activity_id:t.id,active_ms:Math.floor(t.total)})],{type:'application/json'}));});
 function duration(ms){const seconds=Math.floor((ms||0)/1000);return `${Math.floor(seconds/3600)}시간 ${Math.floor(seconds%3600/60)}분 ${seconds%60}초`;}
 function toast(message){ $('#toast').textContent=message; $('#toast').classList.add('show'); setTimeout(()=>$('#toast').classList.remove('show'),4500); }
-function brand(){return '<span class="brand">천마 타자대회</span>';}
+function brand(){return '<span class="brand-lockup"><img class="small-logo" src="/logo-small.png" width="34" height="34" alt=""><span class="brand">천마 타자대회</span></span>';}
 function login(admin=false){
  clearInterval(timer); active=false;
  let remembered={}; try{remembered=JSON.parse(localStorage.getItem('cheonta-profile')||'{}');}catch{}
